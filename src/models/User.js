@@ -12,6 +12,7 @@ const userSchema = new mongoose.Schema({
    email: {
       type: String,
       required: [true, 'Email is required'],
+      minlength: [5, 'Email must be at least 5 characters long'],
       unique: true,
       trim: true,
       lowercase: true,
@@ -35,20 +36,28 @@ const userSchema = new mongoose.Schema({
 // Add a pre-save hook to hash the password before saving the user document
 userSchema.pre('save', async function (next) {
    if (!this.isModified('password')) {
-      return next();
-   }
+      return
+   };
+
    try {
       const salt = await bcrypt.genSalt(10);
       this.password = await bcrypt.hash(this.password, salt);
-      next();
    } catch (error) {
-      next(error);
+      throw new Error(`Error hashing password: ${error.message}`, error);
    }  
 });
 
 // Add a method to compare the provided password with the hashed password in the database
 userSchema.methods.comparePassword = async function (candidatePassword) {
-   return await bcrypt.compare(candidatePassword, this.password);
+   try {
+      if (!this.password) {
+         throw new Error('Password field is not selected or does not exist in the user document. Ensure that the password field exists in the user document and use .select("+password") when querying the user to include the password field for comparison.');
+      };
+
+      return await bcrypt.compare(candidatePassword, this.password);
+   } catch (error) {
+      throw new Error ('Error comparing password:' + error.message, error);
+   };
 };
 
 // Add a method to generate a JWT token for the user
@@ -63,7 +72,8 @@ userSchema.methods.comparePassword = async function (candidatePassword) {
  * 
  */
 userSchema.methods.generateAuthToken = function () {
-   const payload = {
+   try {
+      const payload = {
       id: this._id,
       username: this.username,
       email: this.email,
@@ -71,6 +81,9 @@ userSchema.methods.generateAuthToken = function () {
    };
 
    return jsonwebtoken.sign(payload, process.env.JWT_SECRET, { expiresIn: '10h'});
+   } catch (error) {
+      throw new Error('Error generating auth token: ' + error.message, error);
+   }
 };
 
 // Add a static method to generate a JWT token for a user
@@ -84,7 +97,11 @@ userSchema.methods.generateAuthToken = function () {
  * Note: Ensure that the environment variable JWT_SECRET is set before calling this method to avoid errors.
  */
 userSchema.statics.generateAuthToken = function (payload) {
-   return jsonwebtoken.sign(payload, process.env.JWT_SECRET, { expiresIn: '10h'});
+   try {
+      return jsonwebtoken.sign(payload, process.env.JWT_SECRET, { expiresIn: '10h'});
+   } catch (error) {
+      throw new Error('Error generating auth token: ' + error.message, error);
+   };
 }
 
 // Add a static method to validate the JWT token and return the decoded payload
@@ -109,6 +126,27 @@ userSchema.statics.validateAuthToken = function (token) {
       return null;
    }
 };
+
+// Add a static method to generate a hashed password from a plain text password
+/**
+ * @name hashPassword
+ * @description Generates a hashed password from a plain text password using bcrypt. The method takes a plain text password as input and returns the hashed version of the password.
+ * @param {String} password - The plain text password to be hashed.
+ * @return {Promise<String>} A promise that resolves to the hashed password.
+ * @example
+ * const hashedPassword = await User.hashPassword('myPlainTextPassword');
+ * 
+ * Note: This method is typically used internally before saving a user document to the database, and it is not necessary to create a hashed password manually when creating a user, as the pre-save hook will handle password hashing automatically. However, this method can be useful for hashing passwords in other contexts, such as during user authentication or when updating a user's password.
+ */
+userSchema.statics.hashPassword = async function (password) {
+   try {
+      const salt = await bcrypt.genSalt(10);
+      return await bcrypt.hash(password, salt);
+   } catch (error) {
+      throw new Error('Error hashing password: ' + error.message, error);
+   };
+};
+ 
 
 // Create the User model using the defined schema
 const User = mongoose.model('User', userSchema);

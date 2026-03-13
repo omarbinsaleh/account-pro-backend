@@ -5,6 +5,7 @@ const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 const connectToDatabase = require('./db/db');
 const accountRoutes = require('./routes/accountRoutes.js');
+const userRoutes = require('./routes/userRoutes.js');
 
 const app = express();
 
@@ -17,6 +18,7 @@ app.use(cookieParser());
 connectToDatabase();
 
 // API routes
+app.use('/api/users', userRoutes)
 app.use('/api/accounts', accountRoutes);
 
 // export the app

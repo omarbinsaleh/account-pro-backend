@@ -1,0 +1,451 @@
+// import necessary modules and models
+const User = require('../models/User');
+const mongoose = require('mongoose');
+
+// Define the userController object to hold all user-related controller functions
+const userController = {};
+
+/**
+ * @name createUser
+ * @route POST /api/users
+ * @access Public
+ * @description Controller function to create a new user in the database. It takes the user data from the request body, creates a new user document, and saves it to the database. If the user is created successfully, it returns a success message along with the created user data. If there is an error during the creation process, it returns an error message.
+ * @param {Object} req - The request object containing the user data in the body.
+ * @param {Object} res - The response object used to send the response back to the client.
+ * @returns {Object} A JSON response containing a success message and the created user data if the user is created successfully, or an error message if there is an error during the creation process.
+ * @example
+ * // Example of the request body to create a new user:
+ * {
+ *  "username": "omar bin saleh",
+ *  "email": "omarbinsaleh44@gmail.com",
+ *  "password": "password123",
+ *  "role": "user",
+ * }
+ * 
+ * // Note: Ensure that the request body contains all the required fields (username, email, password, and role) and that the email is unique in the database to avoid errors during user creation.
+ * 
+ */
+userController.createUser = async (req, res) => {
+   try {
+      const { username, email, password, role } = req.body;
+
+      // validate the username fields
+      if (!username || typeof username !== 'string' || !username.trim().length) {
+         return res.status(400).json({ success: false, message: 'Username is required and must be a non-empty string', data: null });
+      };
+
+      // validate the email field
+      if (!email || typeof email !== 'string' || email.trim().length <= 4 || !email.includes('@')) {
+         return res.status(400).json({ success: false, message: 'Email is required and must be a valid email address', data: null });
+      };
+
+      // validate the password field
+      if (!password || typeof password !== 'string' || password.trim().length < 6) {
+         return res.status(400).json({ success: false, message: 'Password is required and must be at least 6 characters long', data: null });
+      };
+
+
+      // create a new user document
+      const newUser = await User.create({ username, email, password, role });
+
+      // create an authentication token for the new user
+      const token = newUser.generateAuthToken();
+
+      // set the token in cookies
+      res.cookie('token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', maxAge: 20 * 60 * 60 * 1000 });
+
+      // send a success response with the created user data
+      return res.status(201).json({ success: true, message: 'User created successfully', data: newUser, token });
+   } catch (error) {
+      res.status(500).json({ success: false, message: `Error creating user: ${error.message}`, data: null });
+   };
+};
+
+/**
+ * @name loginUser
+ * @route POST /api/users/login
+ * @access Public
+ * @description Authenticates a user by email/password, generates a JWT, 
+ * and sets it in an HTTP-only cookie.
+ * 
+ * @param {import('express').Request} req - Express request object.
+ * @param {Object} req.body - Login credentials.
+ * @param {string} req.body.username - User's unique username.
+ * @param {string} req.body.email - User's registered email address.
+ * @param {string} req.body.password - User's plain-text password.
+ * @param {import('express').Response} res - Express response object.
+ * 
+ * @returns {Promise<void>} 200 on success, 400 for validation errors, 401 for invalid credentials.
+ */
+userController.loginUser = async (req, res) => {
+   try {
+      // extract the email and password from the request body
+      const { email, password } = req.body;
+
+      // validate the email field
+      if (!email || typeof email !== 'string' || email.trim().length < 5 || !email.includes('@')) {
+         return res.status(400).json({ success: false, message: 'Email is required and must be a valid email address', data: null });
+      };
+
+      // validate the password field
+      if (!password || typeof password !== 'string' || password.trim().length < 6) {
+         return res.status(400).json({ success: false, message: 'Password is required and must be at least 6 characters long', data: null });
+      };
+
+      // find the user by email using the User model
+      const user = await User.findOne({ email }).select('+password');
+
+      // convert the user document to user object (plain javascript object)
+      const userObj = user.toObject();
+
+      // if the user is not found, return an error response
+      if (!user) {
+         return res.status(401).json({ success: false, message: 'Invalid email or password', data: null });
+      };
+
+      // verify the password
+      const isPasswordValid = await user.comparePassword(password);
+      if (!isPasswordValid) {
+         return res.status(401).json({ success: false, message: 'Invalid email or password', data: null });
+      };
+
+      // generate an authentication token for the user
+      const token = user.generateAuthToken();
+
+      // set the token in the cookies
+      res.cookie('token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', maxAge: 20 * 60 * 60 * 1000 });
+
+      // send a success response with the user data and token
+      return res.status(200).json({ success: true, message: 'User login successful', data: { ...userObj, password: null }, token });
+
+   } catch (error) {
+      return res.status(500).json({ success: false, message: `Error logging in user: ${error.message}`, data: null });
+   };
+};
+
+/**
+ * @name logoutUser
+ * @route POST /api/users/logout
+ * @access Private
+ * @description Logs out the current user by clearing the authentication 
+ * cookie and invalidating the current session.
+ * 
+ * @param {import('express').Request} req - Express request object.
+ * @param {import('express').Response} res - Express response object.
+ * 
+ * @returns {Promise<void>} 200 on success with a confirmation message.
+ */
+userController.logoutUser = async (req, res) => {
+   try {
+      // extract the user ID from the query parameter
+      const userId = req.query.userId || req.query.id || req.body.userId || req.body.id;
+
+      // validate the user Id
+      if (!userId || typeof userId !== 'string' || !userId.trim().length) {
+         return res.status(400).json({ success: false, message: 'User ID is missing or invalid', data: null });
+      };
+
+      // check if the token is sent or not
+      const token = req.cookies?.token || req.headers.authorization?.split(' ')[1];
+      if (!token) {
+         res.status(401).json({ success: false, message: 'Authentication token is missing', data: null });
+      };
+
+      // vaidate the authentication token
+      const decoded = await User.validateAuthToken(token);
+      if (!decoded) {
+         return res.status(401).json({ success: false, message: 'Invalid or expired authentication token', data: null });
+      };
+
+      // find the user by ID and ensure they exist in the database
+      const user = await User.findById(userId);
+      if (!user) {
+         return res.status(401).json({ success: false, message: 'User not found', data: null });
+      };
+
+      // verify the user aginst the token to ensure the user is logging out their own session and not someone else's session
+      if (user._id.toString() !== decoded.id) {
+         return res.status(403).json({ success: false, message: 'You do not have access to this resource', data: null });
+      };
+
+      // cleare the token
+      res.clearCookie('token');
+
+      // send a success response
+      return res.status(200).json({ success: true, message: 'User logout successful', data: { ...user.toObject(), password: null } });
+   } catch (error) {
+      return res.status(500).json({ success: false, message: `Error logging out user: ${error.message}`, data: null });
+   }
+}
+
+/**
+ * @name getAllUsers
+ * @route GET /api/users
+ * @aaccess Private (Requires authentication and appropriate user role)
+ * @description Controller function to retrieve all users from the database. It queries the User model to find all user documents and returns them in the response. If there is an error during the retrieval process, it returns an error message.
+ * @param {Object} req - The request object.
+ * @param {Object} res - The response object used to send the response back to the client.
+ * @returns {Object} A JSON response containing a success message and the retrieved user data if the users are retrieved successfully, or an error message if there is an error during the retrieval process.
+ * 
+ * Note: Ensure that the User model is properly defined and connected to the database before using this controller function to retrieve users. Also, consider implementing pagination or filtering if the number of users in the database is large to optimize performance and reduce response time.
+ * 
+ */
+userController.getAllUsers = async (req, res) => {
+   try {
+      // validate the JWT from cookies or headers to ensure the requester is authenticated and has the nessary permissions to access this resource 
+      const token = req.cookies.token || req.headers.authorization?.split(' ')[1];
+      if (!token) {
+         return res.status(401).json({ success: false, message: 'Authentication token is missing', data: [] });
+      };
+
+      // validate the token and get the decoded user information
+      const decoded = await User.validateAuthToken(token);
+      if (!decoded) {
+         return res.status(401).json({ success: false, message: 'Invalid or expired authentication token', data: [] });
+      };
+
+      // check if the user has permission to access the requested resource (admin only)
+      if (decoded.role !== 'admin') {
+         res.clearCookie('token');
+         return res.status(403).json({ success: false, message: 'Access denied. You do not have permission to access this resource.', data: [] });
+      };
+
+      // retrieve all users from the database using the User model
+      const users = await User.find();
+      return res.status(200).json({ success: true, message: 'Users retrieved successfully', data: users });
+   } catch (error) {
+      return res.status(500).json({ success: false, message: `Error retrieving users: ${error.message}`, data: [] });
+   };
+};
+
+/**
+ * @name getUserById
+ * @route GET /api/users/:id
+ * @access Private (Admin or Account Owner)
+ * @description Retrieves a specific user by their ID. Validates the JWT from 
+ * cookies or headers and ensures the requester has sufficient permissions.
+ * 
+ * @param {import('express').Request} req - Express request object.
+ * @param {string} req.params.id - The UUID or ID of the user to retrieve.
+ * @param {import('express').Response} res - Express response object.
+ * 
+ * @returns {Promise<void>} Returns 200 with user data, 401/403 for auth issues, or 500 on error.
+ */
+userController.getUserById = async (req, res) => {
+   try {
+      // extract the user ID from the request parameters or query parameters
+      const userId = req.params.id || req.query.userId || req.query.id;
+   
+      // validate the user ID
+      if (!userId || typeof userId !== 'string' || !userId.trim().length) {
+         return res.status(400).json({ success: false, message: 'User ID is missing', data: null });
+      };
+      
+      // verify if the token is sent or not
+      const token = req.cookies.token || req.headers.authorization?.split(' ')[1];
+      if (!token) {
+         return res.status(401).json({ success: false, message: 'Authentication token is missing', data: null });
+      };
+
+      // validate the token and get the decoded user information
+      const decoded = await User.validateAuthToken(token);
+      if (!decoded) {
+         return res.status(401).json({ success: false, message: 'Invalid or expired authentication token', data: null });
+      };
+
+      // check if the user has permission to access the requested resource (admin or the user themselves)
+      // if the user is not an admin and is trying to access another user's data, deny access.
+      if (decoded.role !== 'admin' && decoded.id !== userId) {
+         res.clearCookie('token');
+         return res.status(403).json({ success: false, message: 'Access denied. You do not have permission to access this resource.', data: null });
+      };
+
+      // find the user from the database by ID using the User model
+      const user = await User.findById(userId);
+      if (!user) {
+         return res.status(404).json({ success: false, message: 'User not found', data: null });
+      };
+
+      // send a success response with necessary data
+      return res.status(200).json({ success: true, message: 'User details returned successfully', data: user });
+
+   } catch (error) {
+      return res.status(500).json({ success: false, message: `Error retrieving user: ${error.message}`, data: null });
+   };
+};
+
+/**
+ * @name updateUserById
+ * @route PATCH /api/users/:id
+ * @access Private (Admin or Account Owner)
+ * @description Updates user profile information. Validates JWT from cookies/headers.
+ * Only Admins can update the 'role' field; users can update their own username, email, or password.
+ * 
+ * @param {import('express').Request} req - Express request object.
+ * @param {string} req.params.id - The ID of the user to update.
+ * @param {Object} req.body - The update payload.
+ * @param {string} [req.body.username] - New username.
+ * @param {string} [req.body.email] - New email address.
+ * @param {string} [req.body.password] - New password.
+ * @param {string} [req.body.role] - New user role (Admin only).
+ * @param {import('express').Response} res - Express response object.
+ * 
+ * @returns {Promise<void>} 200 on success, 400 for empty payload, 401/403 for auth issues, 404 if not found.
+ */
+userController.updateUserById = async (req, res) => {
+   try {
+      // extract the user ID from the request parameters and the updated user data from the request body
+      const userId = req.params.id;
+      const { username, email, password, role } = req.body;
+
+      // validate the user ID
+      if (!userId || typeof userId !== 'string' || !userId.trim().length) {
+         return res.status(400).json({ success: false, message: 'Invalid or missing user ID', data: null });
+      };
+
+      // validate the username field if it is provided
+      if (username && (typeof username !== 'string' || !username.trim().length)) {
+         return res.status(400).json({ success: false, message: 'Username must be a non-empty string', data: null });
+      };
+
+      // validate the email field if it is provided
+      if (email && (typeof email !== 'string' || !email.trim().length <= 4 || !email.includes('@'))) {
+         return res.status(400).json({ success: false, message: 'Email must be a valid email address', data: null });
+      };
+
+      // validate the password field, if it is provided
+      if (password && (typeof password !== 'string' || !password.trim().length)) {
+         return res.status(400).json({ success: false, message: 'New password must be a non-empty string', data: null });
+      };
+
+      // validate the role field, if it is provided
+      if (role && (typeof role !== 'string' || !role.trim().length)) {
+         return res.status(400).json({ success: false, message: 'New role must be a non-empty string' });
+      };
+
+      // validate the JWT token from cookies or headers to ensure the requester is authenticated and has the necessary permissions to access this resource.
+      const token = req.cookies.token || req.headers.authorization?.split(' ')[1];
+      if (!token) {
+         return res.status(401).json({ success: false, message: 'Authentication token is missing', data: null });
+      };
+
+      // validate the token and get the decoded user information
+      const decoded = await User.validateAuthToken(token);
+      if (!decoded) {
+         return res.status(401).json({ success: false, message: 'Invalid or expired authentication token', data: null });
+      };
+
+      // check if the user has permisssion to access the requested resource (admin or the user themselves)
+      if (decoded.role !== 'admin' && decoded.id !== userId) {
+         res.clearCookie('token');
+         return res.status(403).json({ success: false, message: 'Access denied. You do not have permission to access this resource.', data: null });
+      };
+
+      // create the payload object to hold the updated user data
+      const payload = {};
+      if (username) payload.username = username;
+      if (email) payload.email = email;
+      if (password) {
+         const hashedPassword = await User.hashPassword(password);
+         payload.password = hashedPassword;
+      };
+      if (role) {
+         // only allow admins to update the user role
+         if (decoded.role !== 'admin') {
+            return res.status(403).json({ success: false, message: 'Access denied. You do not have permission to update the user role.', data: null });
+         };
+
+         payload.role = role;
+      };
+
+      // check if there is any data to update
+      if (Object.keys(payload).length === 0) {
+         return res.status(400).json({ success: false, message: 'No valid fields provided for update', data: null });
+      };
+
+      // find the user by ID and update their information using the User model
+      const updatedUser = await User.findByIdAndUpdate(userId, payload, { new: true });
+
+      // if the user is not found, return a 404 error
+      if (!updatedUser) {
+         return res.status(404).json({ success: false, message: 'User not found', data: null });
+      };
+
+      // generate a new authentication token for the updated user
+      const newToken = updatedUser.generateAuthToken();
+      if (!newToken) {
+         return res.status(500).json({ success: false, message: 'Error generating authentication token for updated user', data: null });
+      };
+
+      // set the new token in cookies
+      if (decoded.id === userId) {
+         res.cookie('token', newToken, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', maxAge: 20 * 60 * 60 * 1000 });
+      };
+
+      // send a success response with the updated user data
+      return res.status(200).json({ success: true, message: 'User updated successfully', data: updatedUser, token: newToken });
+   } catch (error) {
+      return res.status(500).json({ success: false, message: `Error updating user: ${error.message}`, data: null });
+   };
+};
+
+/**
+ * @name deleteUserById
+ * @route DELETE /api/users/:id
+ * @access Private (Admin or Account Owner)
+ * @description Permanently deletes a user from the database. 
+ * Validates the requester's JWT and ensures they are either an admin 
+ * or the owner of the account being deleted.
+ * 
+ * @param {import('express').Request} req - Express request object.
+ * @param {string} req.params.id - The ID of the user to be deleted.
+ * @param {import('express').Response} res - Express response object.
+ * 
+ * @returns {Promise<void>} 200 on success, 400 for invalid ID, 401/403 for auth issues, 404 if not found.
+ */
+userController.deleteUserById = async (req, res) => {
+   try {
+      // extract the user ID from the request parameters
+      const userId = req.params.id || req.query.userId || req.query.id || req.body.userID || req.body.id;
+
+      // validate the user ID
+      if (!userId || typeof userId !== 'string' || !userId.trim().length) {
+         return res.status(400).json({ success: false, message: 'Invalid or missing user ID', data: null });
+      };
+
+      // validate the JWT token from cookies or headers to ensure the requester is authenticated and has the necessary permissions to access this resource.
+      const token = req.cookies.token || req.headers.authorization?.split(' ')[1];
+      if (!token) {
+         return res.status(401).json({ success: false, message: 'Authentication token is missing', data: null });
+      };
+
+      // validate the token and get the decoded user information
+      const decoded = await User.validateAuthToken(token);
+      if (!decoded) {
+         return res.status(401).json({ success: false, message: 'Invalid or expired authentication token', data: null });
+      };
+
+      // check if the user has permisssion to access the requested resource (admin or the user themselves)
+      if (decoded.role !== 'admin' && decoded.id !== userId) {
+         res.clearCookie('token');
+         return res.status(403).json({ success: false, message: 'Access denied. You do not have permission to access this resource.', data: null });
+      };
+
+      // find the user by ID and delete their document from the database using the User model
+      const deletedUser = await User.findByIdAndDelete(userId);
+
+      // if the user is not found, return a 404 error
+      if (!deletedUser) {
+         return res.status(404).json({ success: false, message: 'User not found', data: null });
+      };
+
+      // send a success response with the deleted user data
+      return res.status(200).json({ success: true, message: 'User deleted successfully', data: deletedUser });
+
+   } catch (error) {
+      return res.status(500).json({ success: false, message: `Error deleting user: ${error.message}`, data: null });
+   };
+};
+
+// export the userController object to be used in other parts of the application
+module.exports = userController;
