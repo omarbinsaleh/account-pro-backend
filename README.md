@@ -1,3 +1,41 @@
+# AccountPro ( Backend )
+
+AccountPro Backend is a robust, scalable, and secure RESTful API designed to power the AccountPro, a modern ERP systems. Built with Node.js and Express.js, it serves as the core engine for financial management, user administration, and resource planning.
+
+The system is engineered with a modular architecture to handle complex business logic—ranging from multi-tenant user authentication to intricate accounting workflows. With a focus on data integrity and high performance, AccountPro Backend provides a seamless integration layer for AccountPro frontend to manage users, ledgers, and financial reporting in real-time.
+
+---
+
+# Project Structure
+
+account-pro-backend/
+├── src/
+│   ├── db/                      # Database & configurations
+│   |   └── db.js        
+│   ├── controllers/             # Route handlers (parse requests/send responses)
+│   │   ├── accountController.js
+│   │   └── userController.js
+│   ├── middlewares/             # Auth, validation, and error handling
+│   │   └── authMiddleware.js
+│   ├── models/                  # Database schemas (Mongoose)
+│   │   ├── User.js
+│   │   └── Account.js
+│   ├── routes/                  # API route definitions
+│   │   ├── accountRoutes.js
+│   │   └── userRoutes.js
+│   ├── utilities/               # Helper functions
+│   │   ├── index.js
+|   |   └── setCookie.js
+│   └── app.js                   # Express app initialization
+├── tests/                       # Unit and integration tests
+├── .env                         # Environment variables (Secret keys, DB URL)
+├── .gitignore                   # Files to exclude from Git
+├── server.js                    # Express server ( entry point )
+├── package.json                 # Project dependencies and scripts
+└── README.md                    # Project documentation
+
+---
+
 # User Management API
 
 This API provides endpoints for user registration, authentication, and session management.
