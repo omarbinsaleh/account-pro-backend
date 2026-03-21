@@ -17,21 +17,22 @@ http://localhost:3000
 
 Create a new user account. Upon successful registration, an authentication token is generated and set in an HTTP-only cookie.
 
-- URL: /api/users/register
-- Method: POST
-- Access: Public
-- Request Body:
+- **URL:** `/api/users/register`
+- **Method:** `POST`
+- **Access:** Public
+
+- **Request Body:**
 
 | Field    | Type   | Required | Description                           |
 | -------- | ------ | -------- | ------------------------------------- |
 | username | String | Yes      | Unique name for the user.             |
 | email    | String | Yes      | Valid email address (must be unique). |
 | password | String | Yes      | Minimum 6 characters.                 |
-| role     | String | Yes      | User role (e.g., "user", "admin").    |
+| role     | String | No       | User role (e.g., "user", "admin").    |
 
 - **Success Response:**
   - Code: 201 Created
-  - Content:
+  - Response Schema:
 
   ```json
   {
@@ -53,52 +54,51 @@ Create a new user account. Upon successful registration, an authentication token
 
 - **Error Response ( Invalid username field )**
   - Status Code: 400
-  - Content:
+  - Response Schema:
 
   ```json
   {
-     "success": false,
-     "message": "Username is required and must be a non-empty string",
-     "data": null
+    "success": false,
+    "message": "Username is required and must be a non-empty string",
+    "data": null
   }
   ```
 
 - **Error Response ( Invalid email field )**
   - Status Code: 400
-  - Content:
+  - Response Schema:
 
   ```json
   {
-     "success": false,
-     "message": "Email is required and must be a valid email address",
-     "data": null
+    "success": false,
+    "message": "Email is required and must be a valid email address",
+    "data": null
   }
   ```
 
 - **Error Response ( Invalid password field )**
   - Status Code: 400
-  - Content:
+  - Response Schema:
 
   ```json
   {
-     "success": false,
-     "message": "Password is required and must be at least 6 characters long",
-     "data": null
+    "success": false,
+    "message": "Password is required and must be at least 6 characters long",
+    "data": null
   }
   ```
 
 - **Error Response ( Other Error )**
   - Status Code: 500
-  - Content:
+  - Response Schema:
 
   ```json
   {
-     "success": false,
-     "message": "[error message...]",
-     "data": null
+    "success": false,
+    "message": "[error message...]",
+    "data": null
   }
   ```
-
 
 ---
 
@@ -106,10 +106,11 @@ Create a new user account. Upon successful registration, an authentication token
 
 Authenticate a user with their email and password. Returns a JWT and sets it in an HTTP-only cookie.
 
-- URL: /api/users/login
-- Method: POST
-- Access: Public
-- Request Body:
+- **URL:** ` /api/users/login `
+- **Method:** ` POST `
+- **Access:** Public
+
+- **Request Body:**
 
 | Field    | Type   | Required | Description               |
 | -------- | ------ | -------- | ------------------------- |
@@ -117,26 +118,86 @@ Authenticate a user with their email and password. Returns a JWT and sets it in 
 | password | String | Yes      | User's password.          |
 
 - **Success Response:**
-- Code: 200 OK
-  - Content:
+  - Code: 200 OK
+  - Response Schema:
 
-```json
-{
-  "success": true,
-  "message": "User login successful",
-  "data": {
-    "_id": "69b41209e96859dd673a366f",
-    "username": "user_test_2",
-    "email": "user2test@gmail.com",
-    "password": null,
-    "role": "admin",
-    "createdAt": "2026-03-13T13:32:57.077Z",
-    "updatedAt": "2026-03-13T13:32:57.077Z",
-    "__v": 0
-  },
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5YjQxMjA5ZTk2ODU5ZGQ2NzNhMzY2ZiIsInVzZXJuYW1lIjoidXNlcl90ZXN0XzIiLCJlbWFpbCI6InVzZXIydGVzdEBnbWFpbC5jb20iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NzQxMTY4NzIsImV4cCI6MTc3NDE1Mjg3Mn0.Ti9BsS1RVhbmHgZtxnfRvMlppK4X2qZgWKqviJjzv_s"
-}
-```
+  ```json
+  {
+    "success": true,
+    "message": "User login successful",
+    "data": {
+      "_id": "69b41209e96859dd673a366f",
+      "username": "user_test_2",
+      "email": "user2test@gmail.com",
+      "password": null,
+      "role": "admin",
+      "createdAt": "2026-03-13T13:32:57.077Z",
+      "updatedAt": "2026-03-13T13:32:57.077Z",
+      "__v": 0
+    },
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5YjQxMjA5ZTk2ODU5ZGQ2NzNhMzY2ZiIsInVzZXJuYW1lIjoidXNlcl90ZXN0XzIiLCJlbWFpbCI6InVzZXIydGVzdEBnbWFpbC5jb20iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NzQxMTY4NzIsImV4cCI6MTc3NDE1Mjg3Mn0.Ti9BsS1RVhbmHgZtxnfRvMlppK4X2qZgWKqviJjzv_s"
+  }
+  ```
+
+- **Error Response ( Invalid Email Error ):**
+  - Code: 400
+  - Response Schema:
+
+  ```json
+  {
+    "success": false,
+    "message": "Email is required and must be a valid email address",
+    "data": null
+  }
+  ```
+
+- **Error Response ( Invalid Password Error ):**
+  - Code: 400
+  - Response Schema:
+
+  ```json
+  {
+    "success": false,
+    "message": "Password is required and must be at least 6 characters long",
+    "data": null
+  }
+  ```
+
+- **Error Response ( If there is no user associated with the email provided ):**
+  - Code: 404
+  - Response Schema:
+
+  ```json
+  {
+    "success": false,
+    "message": "Invalid email or password",
+    "data": null
+  }
+  ```
+
+- **Error Response ( If the password provided does not match with user's password ):**
+  - Code: 404
+  - Response Schema:
+
+  ```json
+  {
+    "success": false,
+    "message": "Invalid email or password",
+    "data": null
+  }
+  ```
+
+- **Error Response ( Other Error ):**
+  - Code: 500
+  - Response Schema:
+
+  ```json
+  {
+    "success": false,
+    "message": "[Error message...]",
+    "data": null
+  }
+  ```
 
 ---
 

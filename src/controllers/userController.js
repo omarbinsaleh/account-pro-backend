@@ -97,7 +97,7 @@ userController.loginUser = async (req, res) => {
       // Step-03: Find the user by email using the User model, and return an error response if the user is not found
       const user = await User.findOne({ email }).select('+password');
       if (!user) {
-         return res.status(401).json({ success: false, message: 'Invalid email or password', data: null });
+         return res.status(404).json({ success: false, message: 'Invalid email or password', data: null });
       };
 
       // Step-04: Verify the password, and sen an error response if the password is not valid
