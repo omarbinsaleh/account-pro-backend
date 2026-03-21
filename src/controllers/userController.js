@@ -1,6 +1,7 @@
 // import necessary modules and models
 const User = require('../models/User');
 const mongoose = require('mongoose');
+const utilities = require('../utilities');
 
 // Define the userController object to hold all user-related controller functions
 const userController = {};
@@ -27,35 +28,36 @@ const userController = {};
  */
 userController.createUser = async (req, res) => {
    try {
+      // Step-01: Extract necessary data from the request body
       const { username, email, password, role } = req.body;
 
-      // validate the username fields
+      // Step-02: Validate the username fields
       if (!username || typeof username !== 'string' || !username.trim().length) {
          return res.status(400).json({ success: false, message: 'Username is required and must be a non-empty string', data: null });
       };
 
-      // validate the email field
+      // Step-03: Validate the email field
       if (!email || typeof email !== 'string' || email.trim().length <= 4 || !email.includes('@')) {
          return res.status(400).json({ success: false, message: 'Email is required and must be a valid email address', data: null });
       };
 
-      // validate the password field
+      // Step-04: Validate the password field
       if (!password || typeof password !== 'string' || password.trim().length < 6) {
          return res.status(400).json({ success: false, message: 'Password is required and must be at least 6 characters long', data: null });
       };
 
-
-      // create a new user document
+      // Step-05: Create a new user document
       const newUser = await User.create({ username, email, password, role });
 
-      // create an authentication token for the new user
+      // Step-06: Generate an authentication token for the new user, and set the token in cookies
       const token = newUser.generateAuthToken();
+      utilities.setCookie(res, 'token', token);
 
-      // set the token in cookies
-      res.cookie('token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', maxAge: 20 * 60 * 60 * 1000 });
+      // Step-07: Convert the new user document to plain javascript object
+      const newUserObj = newUser.toObject();
 
-      // send a success response with the created user data
-      return res.status(201).json({ success: true, message: 'User created successfully', data: newUser, token });
+      // Step-07: Send a success response with the created user data
+      return res.status(201).json({ success: true, message: 'User created successfully', data: { ...newUserObj, password: null }, token });
    } catch (error) {
       res.status(500).json({ success: false, message: `Error creating user: ${error.message}`, data: null });
    };
@@ -79,43 +81,39 @@ userController.createUser = async (req, res) => {
  */
 userController.loginUser = async (req, res) => {
    try {
-      // extract the email and password from the request body
+      // Step-01: Extract the email and password from the request body
       const { email, password } = req.body;
 
-      // validate the email field
+      // Step-02: Validate the email field
       if (!email || typeof email !== 'string' || email.trim().length < 5 || !email.includes('@')) {
          return res.status(400).json({ success: false, message: 'Email is required and must be a valid email address', data: null });
       };
 
-      // validate the password field
+      // Step-02: Validate the password field
       if (!password || typeof password !== 'string' || password.trim().length < 6) {
          return res.status(400).json({ success: false, message: 'Password is required and must be at least 6 characters long', data: null });
       };
 
-      // find the user by email using the User model
+      // Step-03: Find the user by email using the User model, and return an error response if the user is not found
       const user = await User.findOne({ email }).select('+password');
-
-      // convert the user document to user object (plain javascript object)
-      const userObj = user.toObject();
-
-      // if the user is not found, return an error response
       if (!user) {
          return res.status(401).json({ success: false, message: 'Invalid email or password', data: null });
       };
 
-      // verify the password
+      // Step-04: Verify the password, and sen an error response if the password is not valid
       const isPasswordValid = await user.comparePassword(password);
       if (!isPasswordValid) {
          return res.status(401).json({ success: false, message: 'Invalid email or password', data: null });
       };
 
-      // generate an authentication token for the user
+      // Step-05: Generate an authentication token for the user, and set the token in the cookies
       const token = user.generateAuthToken();
+      utilities.setCookie(res, 'token', token);
 
-      // set the token in the cookies
-      res.cookie('token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', maxAge: 20 * 60 * 60 * 1000 });
+      // Step-06: Convert the user document to user object (plain javascript object)
+      const userObj = user.toObject();
 
-      // send a success response with the user data and token
+      // Step-07: Send a success response with the user data and token
       return res.status(200).json({ success: true, message: 'User login successful', data: { ...userObj, password: null }, token });
 
    } catch (error) {
@@ -137,41 +135,39 @@ userController.loginUser = async (req, res) => {
  */
 userController.logoutUser = async (req, res) => {
    try {
-      // extract the user ID from the query parameter
+      // Step-01: Extract the user ID from the query parameter, and validate the user Id
       const userId = req.query.userId || req.query.id || req.body.userId || req.body.id;
-
-      // validate the user Id
-      if (!userId || typeof userId !== 'string' || !userId.trim().length) {
+      if (!userId || typeof userId !== 'string' || !userId.trim().length || !mongoose.isValidObjectId(userId)) {
          return res.status(400).json({ success: false, message: 'User ID is missing or invalid', data: null });
       };
 
-      // check if the token is sent or not
+      // Step-02: Check if the token is sent or not
       const token = req.cookies?.token || req.headers.authorization?.split(' ')[1];
       if (!token) {
          res.status(401).json({ success: false, message: 'Authentication token is missing', data: null });
       };
 
-      // vaidate the authentication token
+      // Step-03: Authenticate the user by vaidating the authentication token
       const decoded = await User.validateAuthToken(token);
       if (!decoded) {
          return res.status(401).json({ success: false, message: 'Invalid or expired authentication token', data: null });
       };
 
-      // find the user by ID and ensure they exist in the database
+      // Step-04: Find the user by ID and ensure they exist in the database, and send an error response if the user is not found
       const user = await User.findById(userId);
       if (!user) {
-         return res.status(401).json({ success: false, message: 'User not found', data: null });
+         return res.status(404).json({ success: false, message: 'User not found', data: null });
       };
 
-      // verify the user aginst the token to ensure the user is logging out their own session and not someone else's session
-      if (user._id.toString() !== decoded.id) {
+      // Step-05: Verify the user aginst the token to ensure the user is logging out their own session and not someone else's session
+      if (user.id !== decoded.id) {
          return res.status(403).json({ success: false, message: 'You do not have access to this resource', data: null });
       };
 
-      // cleare the token
+      // Step-06: Cleare the token
       res.clearCookie('token');
 
-      // send a success response
+      // Step-07: Send a success response
       return res.status(200).json({ success: true, message: 'User logout successful', data: { ...user.toObject(), password: null } });
    } catch (error) {
       return res.status(500).json({ success: false, message: `Error logging out user: ${error.message}`, data: null });
@@ -233,42 +229,39 @@ userController.getAllUsers = async (req, res) => {
  */
 userController.getUserById = async (req, res) => {
    try {
-      // extract the user ID from the request parameters or query parameters
+      // Step-01: Extract the user ID from the request parameters or query parameters, and validate the user ID
       const userId = req.params.id || req.query.userId || req.query.id;
-   
-      // validate the user ID
-      if (!userId || typeof userId !== 'string' || !userId.trim().length) {
+      if (!userId || typeof userId !== 'string' || !userId.trim().length || !mongoose.isValidObjectId(userId)) {
          return res.status(400).json({ success: false, message: 'User ID is missing', data: null });
       };
-      
-      // verify if the token is sent or not
+
+      // Step-02: Verify if the token is sent or not
       const token = req.cookies.token || req.headers.authorization?.split(' ')[1];
       if (!token) {
          return res.status(401).json({ success: false, message: 'Authentication token is missing', data: null });
       };
 
-      // validate the token and get the decoded user information
+      //Step-03: Validate the token and get the decoded user information
       const decoded = await User.validateAuthToken(token);
       if (!decoded) {
          return res.status(401).json({ success: false, message: 'Invalid or expired authentication token', data: null });
       };
 
-      // check if the user has permission to access the requested resource (admin or the user themselves)
+      //Step-04: Authorize the user to check to see if the user has permission to access the requested resource (admin or the user themselves)
       // if the user is not an admin and is trying to access another user's data, deny access.
       if (decoded.role !== 'admin' && decoded.id !== userId) {
          res.clearCookie('token');
          return res.status(403).json({ success: false, message: 'Access denied. You do not have permission to access this resource.', data: null });
       };
 
-      // find the user from the database by ID using the User model
+      // Step-05: Find the user from the database by ID using the User model, and send an error response if the user is not found.
       const user = await User.findById(userId);
       if (!user) {
          return res.status(404).json({ success: false, message: 'User not found', data: null });
       };
 
-      // send a success response with necessary data
+      // Step-06: Send a success response with necessary data
       return res.status(200).json({ success: true, message: 'User details returned successfully', data: user });
-
    } catch (error) {
       return res.status(500).json({ success: false, message: `Error retrieving user: ${error.message}`, data: null });
    };
@@ -294,54 +287,54 @@ userController.getUserById = async (req, res) => {
  */
 userController.updateUserById = async (req, res) => {
    try {
-      // extract the user ID from the request parameters and the updated user data from the request body
-      const userId = req.params.id;
-      const { username, email, password, role } = req.body;
-
-      // validate the user ID
-      if (!userId || typeof userId !== 'string' || !userId.trim().length) {
+      // Step-01: extract the user ID from the request parameters and validate the user ID 
+      const userId = req.params.id; 
+      if (!userId || typeof userId !== 'string' || !userId.trim().length || !mongoose.isValidObjectId(userId)) {
          return res.status(400).json({ success: false, message: 'Invalid or missing user ID', data: null });
       };
+      
+      // Step-02: extract the updated user data from the request body
+      const { username, email, password, role } = req.body;
 
-      // validate the username field if it is provided
+      // Step-03: validate the username field if it is provided
       if (username && (typeof username !== 'string' || !username.trim().length)) {
          return res.status(400).json({ success: false, message: 'Username must be a non-empty string', data: null });
       };
 
-      // validate the email field if it is provided
+      // Step-04: validate the email field if it is provided
       if (email && (typeof email !== 'string' || !email.trim().length <= 4 || !email.includes('@'))) {
          return res.status(400).json({ success: false, message: 'Email must be a valid email address', data: null });
       };
 
-      // validate the password field, if it is provided
+      // Step-05: validate the password field, if it is provided
       if (password && (typeof password !== 'string' || !password.trim().length)) {
          return res.status(400).json({ success: false, message: 'New password must be a non-empty string', data: null });
       };
 
-      // validate the role field, if it is provided
+      // Step-06: validate the role field, if it is provided
       if (role && (typeof role !== 'string' || !role.trim().length)) {
          return res.status(400).json({ success: false, message: 'New role must be a non-empty string' });
       };
 
-      // validate the JWT token from cookies or headers to ensure the requester is authenticated and has the necessary permissions to access this resource.
+      // Sep-07: validate the JWT token from cookies or headers to ensure the requester is authenticated and has the necessary permissions to access this resource.
       const token = req.cookies.token || req.headers.authorization?.split(' ')[1];
       if (!token) {
          return res.status(401).json({ success: false, message: 'Authentication token is missing', data: null });
       };
 
-      // validate the token and get the decoded user information
+      // Step-08: validate the token and get the decoded user information
       const decoded = await User.validateAuthToken(token);
       if (!decoded) {
          return res.status(401).json({ success: false, message: 'Invalid or expired authentication token', data: null });
       };
 
-      // check if the user has permisssion to access the requested resource (admin or the user themselves)
+      // Step-09: check if the user has permisssion to access the requested resource (admin or the user themselves)
       if (decoded.role !== 'admin' && decoded.id !== userId) {
          res.clearCookie('token');
          return res.status(403).json({ success: false, message: 'Access denied. You do not have permission to access this resource.', data: null });
       };
 
-      // create the payload object to hold the updated user data
+      // step-10: create the payload object to hold the updated user data
       const payload = {};
       if (username) payload.username = username;
       if (email) payload.email = email;
@@ -358,31 +351,30 @@ userController.updateUserById = async (req, res) => {
          payload.role = role;
       };
 
-      // check if there is any data to update
+      // Step-11: check if there is any data to update
       if (Object.keys(payload).length === 0) {
          return res.status(400).json({ success: false, message: 'No valid fields provided for update', data: null });
       };
 
-      // find the user by ID and update their information using the User model
-      const updatedUser = await User.findByIdAndUpdate(userId, payload, { new: true });
-
-      // if the user is not found, return a 404 error
+      // Step-12: find the user by ID and update their information using the User model, and if the user is not found, return a 404 error
+      const updatedUser = await User.findByIdAndUpdate(userId, payload, { returnDocument: 'after', runValidators: true });
       if (!updatedUser) {
          return res.status(404).json({ success: false, message: 'User not found', data: null });
       };
 
-      // generate a new authentication token for the updated user
+      // Step-13: generate a new authentication token for the updated user
       const newToken = updatedUser.generateAuthToken();
       if (!newToken) {
          return res.status(500).json({ success: false, message: 'Error generating authentication token for updated user', data: null });
       };
 
-      // set the new token in cookies
+      // Step-14: set the new token in cookies
       if (decoded.id === userId) {
-         res.cookie('token', newToken, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', maxAge: 20 * 60 * 60 * 1000 });
+         // res.cookie('token', newToken, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', maxAge: 20 * 60 * 60 * 1000 });
+         utilities.setCookie(res, 'token', newToken);
       };
 
-      // send a success response with the updated user data
+      // Step-15: send a success response with the updated user data
       return res.status(200).json({ success: true, message: 'User updated successfully', data: updatedUser, token: newToken });
    } catch (error) {
       return res.status(500).json({ success: false, message: `Error updating user: ${error.message}`, data: null });
@@ -405,43 +397,38 @@ userController.updateUserById = async (req, res) => {
  */
 userController.deleteUserById = async (req, res) => {
    try {
-      // extract the user ID from the request parameters
+      // Step-01: extract the user ID from the request parameters and validate the user ID
       const userId = req.params.id || req.query.userId || req.query.id || req.body.userID || req.body.id;
-
-      // validate the user ID
-      if (!userId || typeof userId !== 'string' || !userId.trim().length) {
+      if (!userId || typeof userId !== 'string' || !userId.trim().length || !mongoose.isValidObjectId(userId)) {
          return res.status(400).json({ success: false, message: 'Invalid or missing user ID', data: null });
       };
 
-      // validate the JWT token from cookies or headers to ensure the requester is authenticated and has the necessary permissions to access this resource.
+      // Step-02: validate the JWT token from cookies or headers to ensure the requester is authenticated and has the necessary permissions to access this resource.
       const token = req.cookies.token || req.headers.authorization?.split(' ')[1];
       if (!token) {
          return res.status(401).json({ success: false, message: 'Authentication token is missing', data: null });
       };
 
-      // validate the token and get the decoded user information
+      // Step-03: validate the token and get the decoded user information
       const decoded = await User.validateAuthToken(token);
       if (!decoded) {
          return res.status(401).json({ success: false, message: 'Invalid or expired authentication token', data: null });
       };
 
-      // check if the user has permisssion to access the requested resource (admin or the user themselves)
+      // Step-04: Authorize the user to check to see if the user has permisssion to access the requested resource (admin or the user themselves)
       if (decoded.role !== 'admin' && decoded.id !== userId) {
          res.clearCookie('token');
          return res.status(403).json({ success: false, message: 'Access denied. You do not have permission to access this resource.', data: null });
       };
 
-      // find the user by ID and delete their document from the database using the User model
+      // Step-05: find the user by ID and delete, and if the user is not found, return a 404 error
       const deletedUser = await User.findByIdAndDelete(userId);
-
-      // if the user is not found, return a 404 error
       if (!deletedUser) {
          return res.status(404).json({ success: false, message: 'User not found', data: null });
       };
 
-      // send a success response with the deleted user data
+      // Step-06: send a success response with the deleted user data
       return res.status(200).json({ success: true, message: 'User deleted successfully', data: deletedUser });
-
    } catch (error) {
       return res.status(500).json({ success: false, message: `Error deleting user: ${error.message}`, data: null });
    };

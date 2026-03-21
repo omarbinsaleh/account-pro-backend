@@ -1,1 +1,178 @@
-# The Backend Server for the AccountPro
+# User Management API
+
+This API provides endpoints for user registration, authentication, and session management.
+
+## Base URL
+
+```
+http://localhost:3000
+
+```
+
+---
+
+## Endpoints
+
+### **1. Register User**
+
+Create a new user account. Upon successful registration, an authentication token is generated and set in an HTTP-only cookie.
+
+- URL: /api/users/register
+- Method: POST
+- Access: Public
+- Request Body:
+
+| Field    | Type   | Required | Description                           |
+| -------- | ------ | -------- | ------------------------------------- |
+| username | String | Yes      | Unique name for the user.             |
+| email    | String | Yes      | Valid email address (must be unique). |
+| password | String | Yes      | Minimum 6 characters.                 |
+| role     | String | Yes      | User role (e.g., "user", "admin").    |
+
+- **Success Response:**
+  - Code: 201 Created
+  - Content:
+
+  ```json
+  {
+    "success": true,
+    "message": "User created successfully",
+    "data": {
+      "username": "user_test_4",
+      "email": "user4test@gmail.com",
+      "password": null,
+      "role": "user",
+      "_id": "69bee0656a0c2d52562ef324",
+      "createdAt": "2026-03-21T18:16:05.304Z",
+      "updatedAt": "2026-03-21T18:16:05.304Z",
+      "__v": 0
+    },
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5YmVlMDY1NmEwYzJkNTI1NjJlZjMyNCIsInVzZXJuYW1lIjoidXNlcl90ZXN0XzQiLCJlbWFpbCI6InVzZXI0dGVzdEBnbWFpbC5jb20iLCJyb2xlIjoidXNlciIsImlhdCI6MTc3NDExNjk2NSwiZXhwIjoxNzc0MTUyOTY1fQ.hTtH3VTWBh3DoRRExapflKiG5T42XOv08WL5dzI5Bkg"
+  }
+  ```
+
+- **Error Response ( Invalid username field )**
+  - Status Code: 400
+  - Content:
+
+  ```json
+  {
+     "success": false,
+     "message": "Username is required and must be a non-empty string",
+     "data": null
+  }
+  ```
+
+- **Error Response ( Invalid email field )**
+  - Status Code: 400
+  - Content:
+
+  ```json
+  {
+     "success": false,
+     "message": "Email is required and must be a valid email address",
+     "data": null
+  }
+  ```
+
+- **Error Response ( Invalid password field )**
+  - Status Code: 400
+  - Content:
+
+  ```json
+  {
+     "success": false,
+     "message": "Password is required and must be at least 6 characters long",
+     "data": null
+  }
+  ```
+
+- **Error Response ( Other Error )**
+  - Status Code: 500
+  - Content:
+
+  ```json
+  {
+     "success": false,
+     "message": "[error message...]",
+     "data": null
+  }
+  ```
+
+
+---
+
+### **2. Login User**
+
+Authenticate a user with their email and password. Returns a JWT and sets it in an HTTP-only cookie.
+
+- URL: /api/users/login
+- Method: POST
+- Access: Public
+- Request Body:
+
+| Field    | Type   | Required | Description               |
+| -------- | ------ | -------- | ------------------------- |
+| email    | String | Yes      | Registered email address. |
+| password | String | Yes      | User's password.          |
+
+- **Success Response:**
+- Code: 200 OK
+  - Content:
+
+```json
+{
+  "success": true,
+  "message": "User login successful",
+  "data": {
+    "_id": "69b41209e96859dd673a366f",
+    "username": "user_test_2",
+    "email": "user2test@gmail.com",
+    "password": null,
+    "role": "admin",
+    "createdAt": "2026-03-13T13:32:57.077Z",
+    "updatedAt": "2026-03-13T13:32:57.077Z",
+    "__v": 0
+  },
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5YjQxMjA5ZTk2ODU5ZGQ2NzNhMzY2ZiIsInVzZXJuYW1lIjoidXNlcl90ZXN0XzIiLCJlbWFpbCI6InVzZXIydGVzdEBnbWFpbC5jb20iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NzQxMTY4NzIsImV4cCI6MTc3NDE1Mjg3Mn0.Ti9BsS1RVhbmHgZtxnfRvMlppK4X2qZgWKqviJjzv_s"
+}
+```
+
+---
+
+### **3. Logout User**
+
+Clears the user's authentication cookie and terminates the session.
+
+- URL: /api/userslogout
+- Method: POST
+- Access: Private (Requires valid Token)
+- Parameters:
+- Identity (Query/Body): userId or id (must match the authenticated user).
+  - Auth (Header/Cookie): Bearer Token or token cookie.
+  - Validation: User ID must be a valid MongoDB ObjectId.
+
+- **Success Response:**
+- Code: 200 OK
+  - Content:
+
+{
+"success": true,
+"message": "User logout successful",
+"data": { "\_id": "...", "username": "...", "email": "...", "password": null, "role": "..." }
+}
+
+---
+
+Error Handling
+Common error responses returned by the API:
+
+- 400 Bad Request: Missing or invalid fields (e.g., invalid email format, short password).
+- 401 Unauthorized: Missing, invalid, or expired authentication token.
+- 403 Forbidden: Attempting to logout or modify a different user's session.
+- 404 Not Found: User ID does not exist in the database.
+- 500 Internal Server Error: Unexpected server-side issues.
+
+---
+
+Would you like me to add a section on how to test these endpoints using a tool like Postman or cURL?
