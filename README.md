@@ -42,7 +42,6 @@ account-pro-backend/
 
 Follow these steps to set up the AccountPro Backend on your local machine.
 
-
 ## Prerequisites
 
 - Node.js (v16.x or higher recommended)
@@ -66,7 +65,7 @@ npm install
 
 3. **Configure Environment Variables:**
 
-Create a ` .env ` file in the root directory and add you configuration
+Create a `.env` file in the root directory and add you configuration
 
 ```env
 PORT=3000
@@ -82,7 +81,7 @@ NODE_ENV=development
 npm run dev
 ```
 
-The development server should be running at ` http://localhost:3000 `
+The development server should be running at `http://localhost:3000`
 
 # User Management API
 
@@ -289,25 +288,96 @@ Authenticate a user with their email and password. Returns a JWT and sets it in 
 
 ### **3. Logout User**
 
-Clears the user's authentication cookie and terminates the session.
+Clears the user's authentication cookie and terminates the session and return the logged out user.
 
-- URL: /api/userslogout
-- Method: POST
-- Access: Private (Requires valid Token)
-- Parameters:
-- Identity (Query/Body): userId or id (must match the authenticated user).
-  - Auth (Header/Cookie): Bearer Token or token cookie.
-  - Validation: User ID must be a valid MongoDB ObjectId.
+- **URL:** `/api/users/logout`
+- **Method:** `POST`
+- **Access:** Private (Requires valid Token)
+- **Parameters:**
+  - **Identity (Query/Body):** `userId` or `id` (must match the authenticated user).
+  - **Auth (Header/Cookie):** Bearer Token or `token` cookie.
+  - **Validation:** User ID must be a valid MongoDB ObjectId.
 
 - **Success Response:**
-- Code: 200 OK
-  - Content:
+  - Code: 200 OK
+  - Response Schema:
 
-{
-"success": true,
-"message": "User logout successful",
-"data": { "\_id": "...", "username": "...", "email": "...", "password": null, "role": "..." }
-}
+  ```json
+  {
+    "success": true,
+    "message": "User logout successful",
+    "data": {
+      "_id": "69b41209e96859dd673a366f",
+      "username": "user_test_2",
+      "email": "user2test@gmail.com",
+      "role": "admin",
+      "createdAt": "2026-03-13T13:32:57.077Z",
+      "updatedAt": "2026-03-13T13:32:57.077Z",
+      "__v": 0,
+      "password": null
+    }
+  }
+  ```
+
+- **Error Response ( Invalid User ID Error or Missing User ID Error ):**
+  - Code: 400
+  - Response Schema:
+
+  ```json
+  {
+    "success": false,
+    "message": "User ID is missing or invalid",
+    "data": null
+  }
+  ```
+
+- **Error Response ( Missing Authentication Token Error ):**
+  - Code: 401
+  - Response Schema:
+
+  ```json
+  {
+    "success": false,
+    "message": "Authentication token is missing",
+    "data": null
+  }
+  ```
+
+- **Error Response ( Invalid or Expired Authentication Token Error ):**
+  - Code: 401
+  - Response Schema:
+
+  ```json
+  {
+    "success": false,
+    "message": "Invalid or expired authentication token",
+    "data": null
+  }
+  ```
+
+- **Error Response ( If there is no user with the ID provided ):**
+  - Code: 404
+  - Response Schema:
+
+  ```json
+  {
+    "success": false,
+    "message": "User not found",
+    "data": null
+  }
+  ```
+
+- **Error Response ( if the user ID does not match with ID found in the Token ):**
+  - Code: 404
+  - Response Schema:
+
+  ```json
+  {
+    "success": false,
+    "message": "You do not have access to this resource",
+    "data": null
+  }
+  ```
 
 ---
 
@@ -321,5 +391,3 @@ Common error responses returned by the API:
 - 500 Internal Server Error: Unexpected server-side issues.
 
 ---
-
-Would you like me to add a section on how to test these endpoints using a tool like Postman or cURL?
