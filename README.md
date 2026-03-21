@@ -8,10 +8,11 @@ The system is engineered with a modular architecture to handle complex business 
 
 # Project Structure
 
+```
 account-pro-backend/
 ├── src/
 │   ├── db/                      # Database & configurations
-│   |   └── db.js        
+│   |   └── db.js
 │   ├── controllers/             # Route handlers (parse requests/send responses)
 │   │   ├── accountController.js
 │   │   └── userController.js
@@ -33,6 +34,7 @@ account-pro-backend/
 ├── server.js                    # Express server ( entry point )
 ├── package.json                 # Project dependencies and scripts
 └── README.md                    # Project documentation
+```
 
 ---
 
@@ -144,8 +146,8 @@ Create a new user account. Upon successful registration, an authentication token
 
 Authenticate a user with their email and password. Returns a JWT and sets it in an HTTP-only cookie.
 
-- **URL:** ` /api/users/login `
-- **Method:** ` POST `
+- **URL:** `/api/users/login`
+- **Method:** `POST`
 - **Access:** Public
 
 - **Request Body:**
