@@ -38,6 +38,52 @@ account-pro-backend/
 
 ---
 
+# 🚀 Getting Started
+
+Follow these steps to set up the AccountPro Backend on your local machine.
+
+
+## Prerequisites
+
+- Node.js (v16.x or higher recommended)
+- npm or yarn
+- MongoDB or your preferred database (ensure it is running)
+
+## Installation
+
+1. **Clone the repository:**
+
+```bash
+git clone https://github.com/omarbinsaleh/account-pro-backend
+cd account-pro-backend
+```
+
+2. **Install dependencies:**
+
+```bash
+npm install
+```
+
+3. **Configure Environment Variables:**
+
+Create a ` .env ` file in the root directory and add you configuration
+
+```env
+PORT=3000
+MONGODB_LOCAL_URI=your_mongodb_local_uri
+MONGODB_ATLAS_URI=your_mongodb_atlas_uri
+JWT_SECRET=your_secret_key
+NODE_ENV=development
+```
+
+4. **Run the application:Development mode (with nodemon):**
+
+```bash
+npm run dev
+```
+
+The development server should be running at ` http://localhost:3000 `
+
 # User Management API
 
 This API provides endpoints for user registration, authentication, and session management.
