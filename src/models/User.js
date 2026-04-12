@@ -25,12 +25,6 @@ const userSchema = new mongoose.Schema({
       select: false // Exclude password from query results by default
    },
    firebaseUID: String,
-   role: {
-      type: String,
-      enum: ['user', 'admin', 'viewer'],
-      default: 'user'
-   }
-
 }, { timestamps: true });
 
 // Add a pre-save hook to hash the password before saving the user document
@@ -44,7 +38,7 @@ userSchema.pre('save', async function (next) {
       this.password = await bcrypt.hash(this.password, salt);
    } catch (error) {
       throw new Error(`Error hashing password: ${error.message}`, error);
-   }  
+   }
 });
 
 // Add a method to compare the provided password with the hashed password in the database
@@ -56,7 +50,7 @@ userSchema.methods.comparePassword = async function (candidatePassword) {
 
       return await bcrypt.compare(candidatePassword, this.password);
    } catch (error) {
-      throw new Error ('Error comparing password:' + error.message, error);
+      throw new Error('Error comparing password:' + error.message, error);
    };
 };
 
@@ -74,13 +68,12 @@ userSchema.methods.comparePassword = async function (candidatePassword) {
 userSchema.methods.generateAuthToken = function () {
    try {
       const payload = {
-      id: this._id,
-      username: this.username,
-      email: this.email,
-      role: this.role
-   };
+         id: this._id,
+         username: this.username,
+         email: this.email,
+      };
 
-   return jsonwebtoken.sign(payload, process.env.JWT_SECRET, { expiresIn: '10h'});
+      return jsonwebtoken.sign(payload, process.env.JWT_SECRET, { expiresIn: '10h' });
    } catch (error) {
       throw new Error('Error generating auth token: ' + error.message, error);
    }
@@ -98,7 +91,7 @@ userSchema.methods.generateAuthToken = function () {
  */
 userSchema.statics.generateAuthToken = function (payload) {
    try {
-      return jsonwebtoken.sign(payload, process.env.JWT_SECRET, { expiresIn: '10h'});
+      return jsonwebtoken.sign(payload, process.env.JWT_SECRET, { expiresIn: '10h' });
    } catch (error) {
       throw new Error('Error generating auth token: ' + error.message, error);
    };
@@ -146,7 +139,7 @@ userSchema.statics.hashPassword = async function (password) {
       throw new Error('Error hashing password: ' + error.message, error);
    };
 };
- 
+
 
 // Create the User model using the defined schema
 const User = mongoose.model('User', userSchema);

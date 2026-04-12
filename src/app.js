@@ -6,6 +6,8 @@ const cookieParser = require('cookie-parser');
 const connectToDatabase = require('./db/db');
 const accountRoutes = require('./routes/accountRoutes.js');
 const userRoutes = require('./routes/userRoutes.js');
+const companyRoutes = require('./routes/companyRoutes.js');
+const membershipRoutes = require('./routes/membershipRoutes.js');
 
 const app = express();
 
@@ -19,6 +21,8 @@ connectToDatabase();
 
 // API routes
 app.use('/api/users', userRoutes)
+app.use('/api/companies', companyRoutes);
+app.use('/api/memberships', membershipRoutes);
 app.use('/api/accounts', accountRoutes);
 
 // export the app

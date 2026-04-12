@@ -1,5 +1,7 @@
+// Import necessary module
 const mongoose = require('mongoose');
 
+// Define the company schema
 const companySchema = new mongoose.Schema({
    name: {
       type: String,
@@ -36,6 +38,11 @@ const companySchema = new mongoose.Schema({
       uppercase: true,
       default: 'USD',
    },
+   owner: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: [true, 'Owner Id is required']
+   }
 }, { timestamps: true });
 
 // Define the Company Model
