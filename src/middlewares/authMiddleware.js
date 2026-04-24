@@ -45,7 +45,7 @@ authMiddleware.authUser = async (req, res, next) => {
 authMiddleware.authCompany = async (req, res, next) => {
    try {
       // step-01: Extract the company ID from the request header, query parameters, or body
-      const companyId = req.header('company-id') || req.query.companyId || req.body.companyId;
+      const companyId = req.header('company-id') || req.query?.conpanyId || req.body?.companyId;
 
       // Step-02: Validate the companyId
       if (!companyId || !mongoose.isValidObjectId(companyId)) {

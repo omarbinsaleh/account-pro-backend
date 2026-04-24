@@ -9,7 +9,7 @@ const userController = {};
 
 /**
  * @name createUser
- * @route POST /api/users
+ * @route POST /api/users/register
  * @access Public
  * @description Controller function to create a new user in the database. It takes the user data from the request body, creates a new user document, and saves it to the database. If the user is created successfully, it returns a success message along with the created user data. If there is an error during the creation process, it returns an error message.
  * @param {Object} req - The request object containing the user data in the body.
@@ -50,7 +50,7 @@ userController.createUser = async (req, res) => {
       const newUser = new User({ username, email, password });
 
       // Step-06: Generate an authentication token for the new user, and set the token in cookies
-      const token = newUser.generateAuthToken();
+      const token = newUser.generateAuthToken(); // -> **this method will either return a token or throw an error.
 
       // Step-07: Save the new user document to the database
       await newUser.save();
@@ -128,7 +128,7 @@ userController.loginUser = async (req, res) => {
 
 /**
  * @name logoutUser
- * @route POST /api/users/logout/:id
+ * @route GET /api/users/logout/:id
  * @middleware authUser 
  * @access Private
  * @description Logs out the current user by clearing the authentication 
@@ -142,7 +142,7 @@ userController.loginUser = async (req, res) => {
 userController.logoutUser = async (req, res) => {
    try {
       // Step-01: Extract the user ID from the query parameter, and validate the user Id
-      const userId = req.params.id || req.query.userId || req.query.id || req.body.userId || req.body.id;
+      const userId = req.params.id
       if (!userId || typeof userId !== 'string' || !userId.trim().length || !mongoose.isValidObjectId(userId)) {
          return res.status(400).json({ success: false, message: 'User ID is missing or invalid', data: null });
       };
@@ -164,6 +164,7 @@ userController.logoutUser = async (req, res) => {
       // Step-07: Send a success response
       return res.status(200).json({ success: true, message: 'User logout successful', data: { ...user.toObject(), password: null } });
    } catch (error) {
+      console.log(error);
       // Step-08: Send an error response if there is an error during the logout process
       return res.status(500).json({ success: false, message: `Error logging out user: ${error.message}`, data: null });
    };
@@ -247,8 +248,8 @@ userController.getAllUsers = async (req, res) => {
  */
 userController.getUserById = async (req, res) => {
    try {
-      // Step-01: Extract the user ID from the request parameters or query parameters, and validate the user ID
-      const userId = req.params.id || req.query.userId || req.query.id;
+      // Step-01: Extract the user ID from the request parameters and validate the user ID
+      const userId = req.params.id;
       if (!userId || typeof userId !== 'string' || !userId.trim().length || !mongoose.isValidObjectId(userId)) {
          return res.status(400).json({ success: false, message: 'User ID is missing', data: null });
       };
@@ -314,8 +315,8 @@ userController.updateUserById = async (req, res) => {
          return res.status(401).json({ success: false, message: 'User authentication or company authentication failed', data: null });
       }
 
-      // Step-03: Extract the user ID from the request parameters or query string or body and validate the user ID 
-      const userId = req.params.id || req.query.userId || req.query.id || req.body.userId || req.body.id; 
+      // Step-03: Extract the user ID from the request parameters
+      const userId = req.params.id;
       if (!userId || typeof userId !== 'string' || !userId.trim().length || !mongoose.isValidObjectId(userId)) {
          return res.status(400).json({ success: false, message: 'Invalid or missing user ID', data: null });
       };
@@ -398,7 +399,7 @@ userController.updateUserById = async (req, res) => {
 userController.deleteUserById = async (req, res) => {
    try {
       // Step-01: extract the user ID from the request parameters and validate the user ID
-      const userId = req.params.id || req.query.userId || req.query.id || req.body.userID || req.body.id;
+      const userId = req.params?.id;
       if (!userId || typeof userId !== 'string' || !userId.trim().length || !mongoose.isValidObjectId(userId)) {
          return res.status(400).json({ success: false, message: 'Invalid or missing user ID', data: null });
       };

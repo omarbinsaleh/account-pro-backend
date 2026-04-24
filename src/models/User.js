@@ -75,7 +75,7 @@ userSchema.methods.generateAuthToken = function () {
 
       return jsonwebtoken.sign(payload, process.env.JWT_SECRET, { expiresIn: '10h' });
    } catch (error) {
-      throw new Error('Error generating auth token: ' + error.message, error);
+      throw new Error(`Error generating auth token: ${error.message}`, error);
    }
 };
 
@@ -91,9 +91,29 @@ userSchema.methods.generateAuthToken = function () {
  */
 userSchema.statics.generateAuthToken = function (payload) {
    try {
+      // Validate the payload before generating the token
+      if (!payload || typeof payload !== 'object') {
+         throw new Error('Invalid payload for generating authentication token: Expected a non-empty object containing user information');
+      };
+
+      // Validate that the payload contains a valid user ID
+      if (!payload.id || typeof payload.id !== 'string' || !payload.id.trim().length || !mongoose.isValidObjectId(payload?.id)) {
+         throw new Error('Invalid payload for generating authentication token: Missing or invalid user ID');
+      };
+
+      // Validate that the payload contains a valid username
+      if (!payload.username || typeof payload.username !== 'string' || !payload.username.trim().length) {
+         throw new Error('Invalid payload for generating authentication token: Missing or invalid username');
+      };
+
+      // Validate that the payload contains a valid email
+      if (!payload.email || typeof payload.email !== 'string' || !payload.email.trim().length || !/\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(payload.email)) {
+         throw new Error('Invalid payload for generating authentication token: Missing or invalid email address');
+      };
+
       return jsonwebtoken.sign(payload, process.env.JWT_SECRET, { expiresIn: '10h' });
    } catch (error) {
-      throw new Error('Error generating auth token: ' + error.message, error);
+      throw new Error(`Error generating auth token: ${error.message}`, error);
    };
 }
 
