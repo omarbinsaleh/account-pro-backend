@@ -102,7 +102,34 @@ companyController.createCompany = async (req, res) => {
 // @access: Private
 // @middleware: authUser
 // @description: Find a company by it's ID
-companyController.findCompanyById = async (req, res) => { };
+companyController.findCompanyById = async (req, res) => { 
+   // Step 01: Check if the user is authenticated and the user information is available in the request object (set by authUser middleware);
+   const user = req.user;
+   if (!user || !user._id || !mongoose.isValidObjectId(user._id)) {
+      return res.status(401).json({ success: false, message: 'User not authenticated', data: null });
+   };
+
+   // Step 02: Get the company ID from the request parameters
+   const companyId = req.params?.id;
+   if (!companyId || !mongoose.isValidObjectId(companyId)) {
+      return res.status(400).json({ success: false, message: 'Invalid or missing company ID', data: null });
+   };
+
+
+   try {
+      // Step 03: Find the company by ID
+      const company = await Company.findById(companyId);
+      if (!company) {
+         return res.status(404).json({ success: false, message: 'Company not found', data: null });
+      };
+
+      // Step 04: Return a success response with the found company data
+      return res.status(200).json({ success: true, message: 'Company found successfully', data: company });
+   } catch (error) {
+      // Step 05: Return an error response with a generic message to avoid exposing sensitive error details
+      return res.status(500).json({ success: false, message: 'Error occurred while finding the company, please try again later', data: null }); 
+   };
+ };
 
 // @name: findCompanies 
 // @path: GET /api/companies
