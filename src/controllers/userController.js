@@ -46,22 +46,28 @@ userController.createUser = async (req, res) => {
          return res.status(400).json({ success: false, message: 'Password is required and must be at least 6 characters long', data: null });
       };
 
-      // Step-05: Create a new user document
+      // Step-05: Check if the email already exists in the database, and if it does, return an error response
+      const existingUser = await User.findOne({ email: email.trim().toLowerCase() });
+      if (existingUser) {
+         return res.status(400).json({ success: false, message: 'User with this email already exists', data: null });
+      };
+
+      // Step-06: Create a new user document
       const newUser = new User({ username, email, password });
 
-      // Step-06: Generate an authentication token for the new user, and set the token in cookies
+      // Step-07: Generate an authentication token for the new user, and set the token in cookies
       const token = newUser.generateAuthToken(); // -> **this method will either return a token or throw an error.
 
-      // Step-07: Save the new user document to the database
+      // Step-08: Save the new user document to the database
       await newUser.save();
 
-      // Step-08: Set the authentication token in the cookies
+      // Step-09: Set the authentication token in the cookies
       utilities.setCookie(res, 'token', token);
 
-      // Step-09: Convert the new user document to plain javascript object
+      // Step-10: Convert the new user document to plain javascript object
       const newUserObj = newUser.toObject();
 
-      // Step-10: Send a success response with the created user data
+      // Step-11: Send a success response with the created user data
       return res.status(201).json({ success: true, message: 'User created successfully', data: { ...newUserObj, password: null }, token });
    } catch (error) {
       return res.status(500).json({ success: false, message: `Error creating user: ${error.message}`, data: null });
