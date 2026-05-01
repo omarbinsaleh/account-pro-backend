@@ -117,14 +117,14 @@ companyController.findCompanyById = async (req, res) => {
 
 
    try {
-      // Step 03: Find the company by ID
-      const company = await Company.findById(companyId);
-      if (!company) {
-         return res.status(404).json({ success: false, message: 'Company not found', data: null });
+      // Step 03: Check Membership Authorization: Ensure that the authenticated user is a member of the company they are trying to access
+      const membership = await Membership.findOne({ userId: user._id, companyId }).populate('companyId');
+      if (!membership) {
+         return res.status(403).json({ success: false, message: 'Access denied: You are not authorized to access this company', data: null });
       };
 
       // Step 04: Return a success response with the found company data
-      return res.status(200).json({ success: true, message: 'Company found successfully', data: company });
+      return res.status(200).json({ success: true, message: 'Company found successfully', data: { ...membership.companyId.toObject(), userRole: membership.role } });
    } catch (error) {
       // Step 05: Return an error response with a generic message to avoid exposing sensitive error details
       return res.status(500).json({ success: false, message: 'Error occurred while finding the company, please try again later', data: null }); 
