@@ -37,7 +37,7 @@ userController.createUser = async (req, res) => {
       };
 
       // Step-03: Validate the email field
-      if (!email || typeof email !== 'string' || email.trim().length <= 4 || !email.includes('@')) {
+      if (!email || typeof email !== 'string' || email.trim().length <= 5 || !email.includes('@')) {
          return res.status(400).json({ success: false, message: 'Email is required and must be a valid email address', data: null });
       };
 
@@ -70,6 +70,14 @@ userController.createUser = async (req, res) => {
       // Step-11: Send a success response with the created user data
       return res.status(201).json({ success: true, message: 'User created successfully', data: { ...newUserObj, password: null }, token });
    } catch (error) {
+      if (error.name === 'GenerateAuthTokenError') {
+         return res.status(400).json({ success: false, message: error.message, data: null });
+      };
+
+      if (error.name === 'HashPasswordError') {
+         return res.status(500).json({ success: false, message: error.message, data: null });
+      }
+
       return res.status(500).json({ success: false, message: `Error creating user: ${error.message}`, data: null });
    };
 };
@@ -128,6 +136,14 @@ userController.loginUser = async (req, res) => {
       return res.status(200).json({ success: true, message: 'User login successful', data: { ...userObj, password: null }, token });
 
    } catch (error) {
+      if (error.name === 'ComparePasswordError') {
+         return res.status(400).json({ success: false, message: `Error comparing password: ${error.message}`, data: null });
+      };
+
+      if (error.name === 'GenerateAuthTokenError') {
+         return res.status(400).json({ success: false, message: `Error generating authentication token: ${error.message}`, data: null });
+      };
+
       return res.status(500).json({ success: false, message: `Error logging in user: ${error.message}`, data: null });
    };
 };
@@ -148,7 +164,7 @@ userController.loginUser = async (req, res) => {
 userController.logoutUser = async (req, res) => {
    try {
       // Step-01: Extract the user ID from the query parameter, and validate the user Id
-      const userId = req.params.id
+      const userId = req.params.id;
       if (!userId || typeof userId !== 'string' || !userId.trim().length || !mongoose.isValidObjectId(userId)) {
          return res.status(400).json({ success: false, message: 'User ID is missing or invalid', data: null });
       };
@@ -383,6 +399,14 @@ userController.updateUserById = async (req, res) => {
       // Step-14: Send a success response with the updated user data
       return res.status(200).json({ success: true, message: 'User updated successfully', data: updatedUser, token: newToken });
    } catch (error) {
+      if (error.name === 'HashPasswordError') {
+         return res.status(400).json({ success: false, message: `Error hashing new password: ${error.message}`, data: null });
+      };
+
+      if (error.name === 'GenerateAuthTokenError') {
+         return res.status(400).json({ success: false, message: `Error generating authentication token for updated user: ${error.message}`, data: null });
+      };
+      
       return res.status(500).json({ success: false, message: `Error updating user: ${error.message}`, data: null });
    };
 };

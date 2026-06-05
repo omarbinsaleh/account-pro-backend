@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const User = require('../models/User');
 const Company = require('../models/Company');
 const Membership = require('../models/Membership');
+const utilities = require('../utilities');
 
 // Define the company controller object
 const companyController = {};
@@ -28,7 +29,9 @@ companyController.createCompany = async (req, res) => {
    };
 
    // Step 04: Validate the email field
-   if (!email || typeof email !== 'string' || !email.trim().length < 5 || !email.includes('@')) {
+   const emailValidationResult = utilities.validateEmail(email);
+   const isValidEmail = emailValidationResult.success;
+   if (!email || !isValidEmail) {
       return res.status(400).json({ success: false, message: 'Company email is required and must be a valid email address', data: null });
    };
 
@@ -49,7 +52,7 @@ companyController.createCompany = async (req, res) => {
       // Step 08: Check if the Company email already exists
       const existingCompany = await Company.findOne({ email: email.trim().toLowerCase() });
       if (existingCompany) {
-         session.endSession();
+         await session.endSession();
          return res.status(400).json({ success: false, message: 'A company with this email already exists', data: null });
       };
 
@@ -114,7 +117,6 @@ companyController.findCompanyById = async (req, res) => {
    if (!companyId || !mongoose.isValidObjectId(companyId)) {
       return res.status(400).json({ success: false, message: 'Invalid or missing company ID', data: null });
    };
-
 
    try {
       // Step 03: Check Membership Authorization: Ensure that the authenticated user is a member of the company they are trying to access

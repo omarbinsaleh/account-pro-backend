@@ -9,6 +9,7 @@ const userRoutes = require('./routes/userRoutes.js');
 const companyRoutes = require('./routes/companyRoutes.js');
 const membershipRoutes = require('./routes/membershipRoutes.js');
 
+// initialize the express application
 const app = express();
 
 // application level middleware
@@ -20,7 +21,7 @@ app.use(cookieParser());
 connectToDatabase();
 
 // API routes
-app.use('/api/users', userRoutes)
+app.use('/api/users', userRoutes); // --> Done with the user routes
 app.use('/api/companies', companyRoutes);
 app.use('/api/memberships', membershipRoutes);
 app.use('/api/accounts', accountRoutes);

@@ -45,12 +45,15 @@ userSchema.pre('save', async function (next) {
 userSchema.methods.comparePassword = async function (candidatePassword) {
    try {
       if (!this.password) {
-         throw new Error('Password field is not selected or does not exist in the user document. Ensure that the password field exists in the user document and use .select("+password") when querying the user to include the password field for comparison.');
+         const error = new Error('Password field is not selected or does not exist in the user document. Ensure that the password field exists in the user document and use .select("+password") when querying the user to include the password field for comparison.');
+         error.name = 'ComparePasswordError';
+         throw error;
       };
 
       return await bcrypt.compare(candidatePassword, this.password);
    } catch (error) {
-      throw new Error('Error comparing password:' + error.message, error);
+      error.name = 'ComparePasswordError';
+      throw error;
    };
 };
 
@@ -75,7 +78,10 @@ userSchema.methods.generateAuthToken = function () {
 
       return jsonwebtoken.sign(payload, process.env.JWT_SECRET, { expiresIn: '10h' });
    } catch (error) {
-      throw new Error(`Error generating auth token: ${error.message}`, error);
+      // throw new Error(`Error generating auth token: ${error.message}`, error);
+      error.message = `Error generating authentication token: ${error.message}`;
+      error.name = 'GenerateAuthTokenError';
+      throw error;
    }
 };
 
@@ -93,33 +99,47 @@ userSchema.statics.generateAuthToken = function (payload) {
    try {
       // Validate the payload before generating the token
       if (!payload || typeof payload !== 'object') {
-         throw new Error('Invalid payload for generating authentication token: Expected a non-empty object containing user information');
+         const error = new Error('Expected a non-empty object containing user information');
+         error.name = 'GenerateAuthTokenError';
+         throw error
       };
 
       // Validate that the payload contains a valid user ID
       if (!payload.id || typeof payload.id !== 'string' || !payload.id.trim().length || !mongoose.isValidObjectId(payload?.id)) {
-         throw new Error('Invalid payload for generating authentication token: Missing or invalid user ID');
+         const error = new Error('Missing or invalid user ID');
+         error.name = 'GenerateAuthTokenError';
+         throw error;
       };
 
       // Validate that the payload contains a valid username
       if (!payload.username || typeof payload.username !== 'string' || !payload.username.trim().length) {
-         throw new Error('Invalid payload for generating authentication token: Missing or invalid username');
+         const error = new Error('Missing or invalid username');
+         error.name = 'GenerateAuthTokenError';
+         throw error;
       };
 
       // Validate that the payload contains a valid email
       if (!payload.email || typeof payload.email !== 'string' || !payload.email.trim().length || !/\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(payload.email)) {
-         throw new Error('Invalid payload for generating authentication token: Missing or invalid email address');
+         const error = new Error('Missing or invalid email address');
+         error.name = 'GenerateAuthTokenError';
+         throw error;
       };
 
       return jsonwebtoken.sign(payload, process.env.JWT_SECRET, { expiresIn: '10h' });
    } catch (error) {
-      throw new Error(`Error generating auth token: ${error.message}`, error);
+      if (error.name === 'GenerateAuthTokenError') throw error;
+
+      error.message = `Error generating authentication token: ${error.message}`;
+      error.name = 'GenerateAuthTokenError';
+      throw error;
    };
 }
 
 // Add a static method to validate the JWT token and return the decoded payload
 /**
  * @name validateAuthToken
+ * @memberof User
+ * @function validateAuthToken
  * @description Validates a JWT token and returns the decoded payload if the token is valid. If the token is invalid or expired, it returns null.
  * @param {String} token - The JWT token to be validated.
  * @returns {Object | null} Returns the decoded payload if the token is valid, otherwise returns null.
@@ -156,7 +176,9 @@ userSchema.statics.hashPassword = async function (password) {
       const salt = await bcrypt.genSalt(10);
       return await bcrypt.hash(password, salt);
    } catch (error) {
-      throw new Error('Error hashing password: ' + error.message, error);
+      error.message = 'Error hashing password';
+      error.name = 'HashPasswordError';
+      throw error;
    };
 };
 
