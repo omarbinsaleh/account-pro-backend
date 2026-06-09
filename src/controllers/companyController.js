@@ -21,26 +21,32 @@ companyController.createCompany = async (req, res) => {
    };
 
    // Step 02: Extract company details from the request body
-   const { name, email, phone, address, website, description, logo, currency } = req.body;
+   const companyDataValidationResult = Company.validateCompanyData(req.body);
+   if (!companyDataValidationResult.success) {
+      return res.status(400).json({ success: false, message: companyDataValidationResult.message, data: null });
+   }
+
+   const companyData = companyDataValidationResult.data;
+   const { name, email, phone, address, website, description, logo, currency } = companyData;
 
    // Step 03: Validate the required fields
    if (!name || typeof name !== 'string' || !name.trim().length) {
       return res.status(400).json({ success: false, message: 'Company name is required and must be a non-empty string', data: null });
    };
 
-   // Step 04: Validate the email field
+   // Step 04: Validate the required email field
    const emailValidationResult = utilities.validateEmail(email);
    const isValidEmail = emailValidationResult.success;
    if (!email || !isValidEmail) {
       return res.status(400).json({ success: false, message: 'Company email is required and must be a valid email address', data: null });
    };
 
-   // Step 05: Validate the phone number field
+   // Step 05: Validate the required phone number field
    if (!phone || typeof phone !== 'string' || !phone.trim().length) {
       return res.status(400).json({ success: false, message: 'Company phone number is required and must be a valid phone number', data: null });
    };
 
-   // Step 06: Validate the address field
+   // Step 06: Validate the required address field
    if (!address || typeof address !== 'string' || !address.trim().length) {
       return res.status(400).json({ success: false, message: 'Company address is required and must be a non-empty string', data: null });
    };
@@ -192,7 +198,98 @@ companyController.findCompanies = async (req, res) => {
 // @access: Private
 // @middleware: authUser
 // @description: Update a company information by it's ID
-companyController.updateCompanyById = async (req, res) => { };
+companyController.updateCompanyById = async (req, res) => {
+   // Step 01: Check if the user is authenticated and the user information is available in the request object (set by authUser middleware)
+   const user = req.user;
+   if (!user || !user._id || !mongoose.isValidObjectId(user._id)) {
+      return res.status(401).json({ success: false, message: 'User not authenticated', data: null });
+   };
+
+   // Step 02: Get the company ID from the request parameters
+   const companyId = req.params?.id;
+   if (!companyId || !mongoose.isValidObjectId(companyId)) {
+      return res.status(400).json({ success: false, message: 'Invalid or missing company ID', data: null });
+   };
+
+   // Step 03: Extract the fields to be updated from the request body
+   const companyDataValidationResult = Company.validateCompanyData(req.body);
+   if (!companyDataValidationResult.success) {
+      return res.status(400).json({ success: false, message: companyDataValidationResult.message, data: null });
+   };
+
+   const companyData = companyDataValidationResult.data;
+   const { name, email, phone, address, website, description, logo, currency } = companyData;
+
+   // Step 04: Validate the email field if it is provided in the request body
+   if (email) {
+      const emailValidationResult = utilities.validateEmail(email);
+      const isValidEmail = emailValidationResult.success;
+      if (!isValidEmail) {
+         return res.status(400).json({ success: false, message: 'Company email must be a valid email address', data: null });
+      };
+   };
+
+   // Step 05: Validate the phone number field if it is provided in the request body
+   if (phone) {
+      if (typeof phone !== 'string' || !phone.trim().length) {
+         return res.status(400).json({ success: false, message: 'Company phone number must be a valid phone number', data: null });
+      };
+   };
+
+   // Step 06: Validate the address field if it is provided in the request body
+   if (address) {
+      if (typeof address !== 'string' || !address.trim().length) {
+         return res.status(400).json({ success: false, message: 'Company address must be a non-empty string', data: null });
+      };
+   };
+
+   // Step 07: Check Membership Authorization: Ensure that the authenticated user is a member of this company and has the 'owner' role to be able to update the company information
+   try {
+      const membership = await Membership.findOne({ userId: user._id, companyId });
+      if (!membership) {
+         return res.status(403).json({ success: false, message: 'Access denied: You are not authorized to update this company', data: null });
+      };
+
+      if (membership.role !== 'owner') {
+         return res.status(403).json({ success: false, message: 'Access denied: Only company owners can update the company information', data: null });
+      };
+   }
+   catch (error) {
+      return res.status(500).json({ success: false, message: 'Error occurred while checking company membership, please try again later', data: null });
+   }
+
+   // Step 08: Update the company information with the provided fields in the request body
+   try {
+      const paylaod = {};
+      if (name) payload.name = name;
+      if (email) payload.email = email;
+      if (phone) payload.phone = phone;
+      if (address) payload.address = address;
+      if (website) payload.website = website;
+      if (description) payload.description = description
+      if (logo) payload.logo = logo;
+      if (currency) payload.currency = currency;
+
+      const updatedFields = Object.keys(payload);
+      if (!updatedFields.length) {
+         return res.status(400).json({ success: false, message: 'At least one field must be provided to update the company information', data: null });
+      };
+
+      const updatedCompany = await Company.findByIdAndUpdate(companyId, payload, { new: true });
+      if (!updatedCompany) {
+         return res.status(404).json({ success: false, message: 'Company not found', data: null });
+      };
+
+      // Step 09: Return a success response with the updated company data
+      if (updatedFields.length === 1) {
+         return res.status(200).json({ success: true, message: `Company ${updatedFields[0]} updated successfully`, data: updatedCompany });
+      };
+      return res.status(200).json({ success: true, message: 'Company updated successfully', data: updatedCompany });
+   } catch (error) {
+      // Step 09: Return an error response with a generic message to avoid exposing sensitive error details
+      return res.status(500).json({ success: false, message: 'Error occurred while updating the company, please try again later', data: null });
+   }
+};
 
 // @name: deleteCompanyById
 // @path: DELETE /api/companies/:id

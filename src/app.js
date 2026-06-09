@@ -22,7 +22,7 @@ connectToDatabase();
 
 // API routes
 app.use('/api/users', userRoutes); // --> Done with the user routes
-app.use('/api/companies', companyRoutes);
+app.use('/api/companies', companyRoutes); // --> Partially done with the company routes.
 app.use('/api/memberships', membershipRoutes);
 app.use('/api/accounts', accountRoutes);
 
