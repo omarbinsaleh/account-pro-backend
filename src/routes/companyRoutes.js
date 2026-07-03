@@ -10,7 +10,7 @@ const companyRouter = express.Router();
 companyRouter.post('/', authMiddleware.authUser, companyControllers.createCompany); // API to register a new company -> Done
 companyRouter.get('/:id', authMiddleware.authUser, companyControllers.findCompanyById); // API to find a company by its ID -> Done
 companyRouter.get('/', authMiddleware.authUser, companyControllers.findCompanies); // API end point to find more than one company -> Done
-companyRouter.patch('/:id', authMiddleware.authUser, companyControllers.updateCompanyById); // API end point to update a company by its ID
+companyRouter.patch('/:id', authMiddleware.authUser, companyControllers.updateCompanyById); // API end point to update a company by its ID -> Done
 companyRouter.delete('/:id', authMiddleware.authUser, companyControllers.deleteCompanyById); // API end point to delete a company by its ID
 
 // Export the company router

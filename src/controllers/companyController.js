@@ -196,7 +196,7 @@ companyController.findCompanies = async (req, res) => {
 // @name: updateCompanyById
 // @path: PATCH /api/companies/:id
 // @access: Private
-// @middleware: authUser
+// @middleware: authUser -> 
 // @description: Update a company information by it's ID
 companyController.updateCompanyById = async (req, res) => {
    // Step 01: Check if the user is authenticated and the user information is available in the request object (set by authUser middleware)
@@ -213,9 +213,9 @@ companyController.updateCompanyById = async (req, res) => {
 
    // Step 03: Extract the fields to be updated from the request body
    const companyDataValidationResult = Company.validateCompanyData(req.body);
-   if (!companyDataValidationResult.success) {
+   if (!companyDataValidationResult.success || !companyDataValidationResult.data) {
       return res.status(400).json({ success: false, message: companyDataValidationResult.message, data: null });
-   };
+};
 
    const companyData = companyDataValidationResult.data;
    const { name, email, phone, address, website, description, logo, currency } = companyData;

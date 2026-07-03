@@ -22,20 +22,38 @@ const validateURL = (url) => {
       return { success: false, message: 'URL must be a non-empty string.', url: null };
    };
 
-   const urlPattern = new RegExp('^(https?:\\/\\/)?' + // protocol
-      '((([a-zA-Z0-9\\-]+\\.)+[a-zA-Z]{2,})|' + // domain name
-      '((\\d{1,3}\\.){3}\\d{1,3}))' + // OR ip (v4) address
-      '(\\:\\d+)?(\\/[-a-zA-Z0-9%_\\.~+]*)*' + // port and path
-      '(\\?[;&a-zA-Z0-9%_\\.~+=-]*)?' + // query string
-      '(\\#[-a-zA-Z0-9_]*)?$', 'i'
-   );
+   // const urlPattern = new RegExp('^(https?:\\/\\/)?' + // protocol
+   //    '((([a-zA-Z0-9\\-]+\\.)+[a-zA-Z]{2,})|' + // domain name
+   //    '((\\d{1,3}\\.){3}\\d{1,3}))' + // OR ip (v4) address
+   //    '(\\:\\d+)?(\\/[-a-zA-Z0-9%_\\.~+]*)*' + // port and path
+   //    '(\\?[;&a-zA-Z0-9%_\\.~+=-]*)?' + // query string
+   //    '(\\#[-a-zA-Z0-9_]*)?$', 'i'
+   // );
 
-   const result = urlPattern.test(url);
-   if (!result) {
+   // const result = urlPattern.test(url);
+   // if (!result) {
+   //    return { success: false, message: 'Invalid URL format.', url: null };
+   // };
+
+   // return { success: true, message: 'Valid URL.', url: url.trim().toLowerCase() };\
+
+   try {
+      // The native URL constructor will throw an error if the URL is invalid.
+      // Note: It requires a protocol (e.g., http://). 
+      // If you want to support protocol-less URLs (like 'example.com'), we can patch it temporarily.
+      const hasProtocol = /^https?:\/\//i.test(url.trim());
+      const urlToParse = hasProtocol ? url.trim() : `https://${url.trim()}`;
+
+      const parsedUrl = new URL(urlToParse);
+
+      return {
+         success: true,
+         message: 'Valid URL.',
+         url: parsedUrl.href.toLowerCase()
+      };
+   } catch (error) {
       return { success: false, message: 'Invalid URL format.', url: null };
-   };
-
-   return { success: true, message: 'Valid URL.', url: url.trim().toLowerCase() };
+   }
 };
 
 module.exports = validateURL;
